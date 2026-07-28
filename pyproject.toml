@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edgetune"
+version = "0.1.0"
+description = "PEFT + Quantization & Pruning Pipeline for Deployable Small Language Models"
+readme = "README.md"
+authors = [
+    { name = "EdgeTune Contributors" }
+]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "peft>=0.10.0",
+    "datasets>=2.18.0",
+    "accelerate>=0.28.0",
+    "bitsandbytes>=0.43.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "streamlit>=1.32.0",
+    "matplotlib>=3.8.0",
+    "pandas>=2.2.0",
+    "scikit-learn>=1.4.0",
+    "pydantic>=2.6.0",
+    "pyyaml>=6.0.1",
+    "rouge-score>=0.1.2",
+    "evaluate>=0.4.1",
+    "requests>=2.31.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "black",
+    "ruff"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

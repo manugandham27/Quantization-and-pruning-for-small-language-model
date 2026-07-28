@@ -1,0 +1,21 @@
+model:
+  name_or_path: "models/base_model"
+  torch_dtype: "float16"
+  device_map: "auto"
+  trust_remote_code: true
+  max_length: 256
+
+dataset:
+  name: "samsum"
+  train_split: "train"
+  val_split: "validation"
+  test_split: "test"
+  max_train_samples: 40
+  max_eval_samples: 15
+  text_column: "dialogue"
+  summary_column: "summary"
+
+hardware:
+  seed: 42
+  batch_size: 4
+  eval_batch_size: 4

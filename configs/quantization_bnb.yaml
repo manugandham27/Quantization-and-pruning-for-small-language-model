@@ -1,0 +1,7 @@
+quantization:
+  method: "bitsandbytes"
+  bits: 4 # 4 or 8
+  quant_type: "nf4" # nf4 or fp4
+  double_quant: true
+  compute_dtype: "float16"
+  output_dir: "results/checkpoints/bnb_4bit"

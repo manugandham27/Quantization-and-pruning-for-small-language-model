@@ -1,0 +1,6 @@
+pruning:
+  method: "unstructured_magnitude"
+  sparsity: 0.50
+  target_modules: ["c_attn", "c_proj", "c_fc", "q_proj", "v_proj", "k_proj", "o_proj"]
+  make_permanent: true
+  output_dir: "results/checkpoints/pruned_50"

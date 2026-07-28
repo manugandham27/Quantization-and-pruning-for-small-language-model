@@ -1,0 +1,8 @@
+quantization:
+  method: "gptq_groupwise"
+  bits: 4
+  group_size: 64
+  sym: true
+  desc_act: false
+  target_modules: ["c_attn", "c_proj", "c_fc", "q_proj", "v_proj", "k_proj", "o_proj"]
+  output_dir: "results/checkpoints/gptq_4bit"
