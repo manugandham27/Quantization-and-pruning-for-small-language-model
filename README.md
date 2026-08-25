@@ -1,6 +1,12 @@
-# EdgeTune ⚡ — PEFT + Quantization & Pruning Pipeline for Deployable LLMs
+# EdgeTune ⚡: Quantization, Pruning, and PEFT Pipeline for Deployable Small Language Models
 
 > **Fine-tunes and compresses open Small Language Models (SLMs) down to a fraction of their original disk footprint and memory footprint with minimal accuracy loss — featuring a full benchmarked Pareto tradeoff curve across every stage.**
+
+---
+
+## 📝 Abstract
+
+Deploying Small Language Models (SLMs) to resource-constrained edge architectures requires balancing strict hardware budgets—including memory allocation, storage footprint, and real-time latency—against downstream task fidelity. This work presents **EdgeTune**, a unified framework and empirical evaluation pipeline for parameter-efficient fine-tuning (PEFT), unstructured magnitude pruning, and low-bit weight quantization tailored for edge-deployable LLMs. By combining Low-Rank Adaptation (LoRA/QLoRA) with groupwise 4-bit uniform weight quantization and magnitude pruning, EdgeTune evaluates multi-stage compression techniques to mitigate precision loss and prevent block-scale scaling distortion. We implement an automated multi-dimensional benchmark harness that systematically records accuracy (ROUGE-L), memory footprint (peak RAM/VRAM allocation), disk storage, Time-To-First-Token (TTFT), and generation throughput (tokens/sec) across all pipeline stages. Experimental results demonstrate that combined PEFT, pruning, and quantization achieve significant reductions in model footprint while preserving domain-specific generation performance. The framework is accompanied by production-grade FastAPI inference services and an interactive Streamlit visualization suite for Pareto frontier analysis.
 
 ---
 
