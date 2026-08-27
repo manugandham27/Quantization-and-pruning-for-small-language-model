@@ -2,9 +2,9 @@
 Unit tests for Groupwise 4-Bit Linear Layer and Quantization module.
 """
 
-import pytest
 import torch
-import torch.nn as nn
+from torch import nn
+
 from edgetune.quantizer import Groupwise4BitLinear, Groupwise4BitQuantizer
 from edgetune.schemas import QuantizationConfigSchema
 

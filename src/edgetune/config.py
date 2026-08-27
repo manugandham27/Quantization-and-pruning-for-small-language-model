@@ -3,27 +3,28 @@ Configuration loader for EdgeTune YAML configurations.
 """
 
 import os
-from typing import Dict, Any
+from typing import Any
+
 import yaml
 
 from edgetune.schemas import (
-    ModelConfig,
     DatasetConfig,
     LoRAConfigSchema,
-    TrainingConfig,
-    QuantizationConfigSchema,
+    ModelConfig,
     PruningConfigSchema,
+    QuantizationConfigSchema,
+    TrainingConfig,
 )
 
 
-def load_yaml(filepath: str) -> Dict[str, Any]:
+def load_yaml(filepath: str) -> dict[str, Any]:
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Configuration file not found: {filepath}")
     with open(filepath, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def load_base_config(config_path: str = "configs/base_model.yaml") -> Dict[str, Any]:
+def load_base_config(config_path: str = "configs/base_model.yaml") -> dict[str, Any]:
     raw_data = load_yaml(config_path)
     model_cfg = ModelConfig(**raw_data.get("model", {}))
     dataset_cfg = DatasetConfig(**raw_data.get("dataset", {}))
@@ -35,14 +36,14 @@ def load_base_config(config_path: str = "configs/base_model.yaml") -> Dict[str, 
     }
 
 
-def load_lora_config(config_path: str = "configs/lora.yaml") -> Dict[str, Any]:
+def load_lora_config(config_path: str = "configs/lora.yaml") -> dict[str, Any]:
     raw_data = load_yaml(config_path)
     lora_cfg = LoRAConfigSchema(**raw_data.get("lora", {}))
     training_cfg = TrainingConfig(**raw_data.get("training", {}))
     return {"lora": lora_cfg, "training": training_cfg}
 
 
-def load_qlora_config(config_path: str = "configs/qlora.yaml") -> Dict[str, Any]:
+def load_qlora_config(config_path: str = "configs/qlora.yaml") -> dict[str, Any]:
     raw_data = load_yaml(config_path)
     lora_cfg = LoRAConfigSchema(**raw_data.get("qlora", {}))
     training_cfg = TrainingConfig(**raw_data.get("training", {}))

@@ -3,9 +3,15 @@ Base model and tokenizer loader with multi-hardware support (CUDA, MPS, CPU).
 """
 
 import os
+from typing import Any
+
 import torch
-from typing import Tuple, Dict, Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+)
 
 from edgetune.schemas import ModelConfig
 
@@ -36,10 +42,10 @@ def get_torch_dtype(dtype_str: str) -> torch.dtype:
 
 def load_model_and_tokenizer(
     model_config: ModelConfig,
-    device_override: Optional[torch.device] = None,
+    device_override: torch.device | None = None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
-) -> Tuple[PreTrainedModel, PreTrainedTokenizer, torch.device]:
+) -> tuple[PreTrainedModel, PreTrainedTokenizer, torch.device]:
     """
     Loads pretrained causal LLM and tokenizer with specified precision and hardware device.
     """
@@ -54,8 +60,11 @@ def load_model_and_tokenizer(
         trust_remote_code=model_config.trust_remote_code,
     )
     if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+        if tokenizer.eos_token is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+        else:
+            tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     quantization_config = None
     if load_in_4bit or load_in_8bit:
@@ -70,16 +79,15 @@ def load_model_and_tokenizer(
                 )
             elif load_in_8bit:
                 quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             print(f"[ModelLoader] BitsAndBytesConfig warning: {e}. Falling back to standard precision.")
 
-    model_kwargs: Dict[str, Any] = {
+    model_kwargs: dict[str, Any] = {
         "trust_remote_code": model_config.trust_remote_code,
         "torch_dtype": torch_dtype,
     }
     if device.type == "mps":
         model_kwargs["attn_implementation"] = "eager"
-
 
     if quantization_config is not None:
         model_kwargs["quantization_config"] = quantization_config
@@ -87,7 +95,7 @@ def load_model_and_tokenizer(
     elif device.type in ["cuda", "mps"]:
         model = AutoModelForCausalLM.from_pretrained(
             model_config.name_or_path,
-            **model_kwargs
+            **model_kwargs,
         )
         model = model.to(device)
         return model, tokenizer, device
@@ -96,7 +104,7 @@ def load_model_and_tokenizer(
 
     model = AutoModelForCausalLM.from_pretrained(
         model_config.name_or_path,
-        **model_kwargs
+        **model_kwargs,
     )
 
     return model, tokenizer, device
@@ -106,12 +114,8 @@ def get_model_size_mb(model: torch.nn.Module) -> float:
     """
     Calculates size of model parameters in memory in MB.
     """
-    param_size = 0
-    for param in model.parameters():
-        param_size += param.nelement() * param.element_size()
-    buffer_size = 0
-    for buffer in model.buffers():
-        buffer_size += buffer.nelement() * buffer.element_size()
+    param_size = sum(param.nelement() * param.element_size() for param in model.parameters())
+    buffer_size = sum(buffer.nelement() * buffer.element_size() for buffer in model.buffers())
     size_all_mb = (param_size + buffer_size) / (1024 ** 2)
     return round(size_all_mb, 2)
 
@@ -123,7 +127,7 @@ def get_directory_size_mb(directory: str) -> float:
     if not os.path.exists(directory):
         return 0.0
     total_bytes = 0
-    for root, dirs, files in os.walk(directory):
+    for root, _, files in os.walk(directory):
         for f in files:
             fp = os.path.join(root, f)
             if os.path.isfile(fp):

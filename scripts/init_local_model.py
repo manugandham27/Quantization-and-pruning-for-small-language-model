@@ -4,8 +4,8 @@ Initializes a local base model checkpoint to ensure 100% offline, lightning-fast
 """
 
 import os
-import torch
-from transformers import GPT2Config, GPT2LMHeadModel, AutoTokenizer
+
+from transformers import AutoTokenizer, GPT2Config, GPT2LMHeadModel
 
 
 def init_local_base_model(output_dir: str = "models/base_model"):

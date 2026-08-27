@@ -3,36 +3,38 @@ PEFT Fine-Tuning Module supporting standard LoRA and QLoRA on downstream tasks.
 """
 
 import os
-import torch
-from typing import Dict, Any, Optional, Tuple
-from datasets import load_dataset, Dataset
-from transformers import (
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling,
-    PreTrainedModel,
-    PreTrainedTokenizer,
-)
+
+from datasets import Dataset, load_dataset
 from peft import (
     LoraConfig,
-    get_peft_model,
-    PeftModel,
-    prepare_model_for_kbit_training,
     TaskType,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+)
+from transformers import (
+    DataCollatorForLanguageModeling,
+    PreTrainedTokenizer,
+    Trainer,
+    TrainingArguments,
 )
 
-from edgetune.schemas import ModelConfig, DatasetConfig, LoRAConfigSchema, TrainingConfig
-from edgetune.model_loader import load_model_and_tokenizer, get_optimal_device
+from edgetune.model_loader import load_model_and_tokenizer
+from edgetune.schemas import (
+    DatasetConfig,
+    LoRAConfigSchema,
+    ModelConfig,
+    TrainingConfig,
+)
 
 
-def format_samsum_prompt(example: Dict[str, str], max_length: int = 512) -> Dict[str, str]:
+def format_samsum_prompt(example: dict[str, str], max_length: int = 512) -> dict[str, str]:
     dialogue = example.get("dialogue", "")
     summary = example.get("summary", "")
     full_text = f"Summarize the following conversation:\n\n{dialogue}\n\nSummary:\n{summary}"
     return {"text": full_text}
 
 
-def prepare_samsum_dataset(dataset_cfg: DatasetConfig, tokenizer: PreTrainedTokenizer) -> Tuple[Dataset, Dataset]:
+def prepare_samsum_dataset(dataset_cfg: DatasetConfig, tokenizer: PreTrainedTokenizer) -> tuple[Dataset, Dataset, Dataset]:
     """
     Loads and tokenizes SAMSum dataset for instruction fine-tuning.
     """
@@ -45,7 +47,7 @@ def prepare_samsum_dataset(dataset_cfg: DatasetConfig, tokenizer: PreTrainedToke
         val_data = raw_ds[dataset_cfg.val_split].select(
             range(min(len(raw_ds[dataset_cfg.val_split]), dataset_cfg.max_eval_samples))
         )
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError, OSError) as e:
         print(f"[PEFT] HF Hub dataset load note: {e}. Using built-in SAMSum dialogue dataset split.")
         sample_dialogues = [
             "Alice: Hi Bob, did you check the project report?\nBob: Yes, looks great! I will finalize it by 3 PM.",
@@ -63,7 +65,6 @@ def prepare_samsum_dataset(dataset_cfg: DatasetConfig, tokenizer: PreTrainedToke
         ] * 10
         train_data = Dataset.from_dict({"dialogue": sample_dialogues[:40], "summary": sample_summaries[:40]})
         val_data = Dataset.from_dict({"dialogue": sample_dialogues[40:], "summary": sample_summaries[40:]})
-
 
     def tokenize_function(examples):
         texts = [
@@ -84,7 +85,6 @@ def prepare_samsum_dataset(dataset_cfg: DatasetConfig, tokenizer: PreTrainedToke
     tokenized_val = val_data.map(tokenize_function, batched=True, remove_columns=val_data.column_names)
 
     return tokenized_train, tokenized_val, val_data
-
 
 
 def train_peft_model(
@@ -122,7 +122,6 @@ def train_peft_model(
 
     train_ds, val_ds, _ = prepare_samsum_dataset(dataset_cfg, tokenizer)
 
-
     training_args = TrainingArguments(
         output_dir=training_cfg.output_dir,
         per_device_train_batch_size=training_cfg.per_device_train_batch_size,
@@ -136,7 +135,6 @@ def train_peft_model(
         fp16=(device.type == "cuda" and not use_qlora),
         report_to="none",
     )
-
 
     trainer = Trainer(
         model=model,
@@ -166,7 +164,7 @@ def train_peft_model(
             tokenizer.save_pretrained(merged_dir)
             print(f"[PEFT] Saved merged standalone checkpoint to '{merged_dir}'")
             return merged_dir
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError, AttributeError) as e:
         print(f"[PEFT] Merge note: {e}")
 
     return save_dir
