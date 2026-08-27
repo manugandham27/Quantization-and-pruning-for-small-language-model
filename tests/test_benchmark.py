@@ -2,12 +2,13 @@
 Unit tests for EdgeTune benchmark metrics and helper logic.
 """
 
-import pytest
 import torch
-import torch.nn as nn
-from edgetune.schemas import BenchmarkMetrics
-from edgetune.model_loader import get_model_size_mb, get_directory_size_mb
+from torch import nn
+
+from edgetune.benchmark import get_peak_memory_mb
+from edgetune.model_loader import get_model_size_mb
 from edgetune.pruner import calculate_model_sparsity
+from edgetune.schemas import BenchmarkMetrics
 
 
 class SimpleToyModel(nn.Module):
@@ -37,6 +38,13 @@ def test_calculate_model_sparsity():
     assert sparsity > 0.0
     assert zero_params > 0
     assert total_params == (64 * 128 + 128 * 10)
+
+
+def test_get_peak_memory_mb():
+    device = torch.device("cpu")
+    mem_mb = get_peak_memory_mb(device)
+    assert isinstance(mem_mb, float)
+    assert mem_mb > 0.0
 
 
 def test_benchmark_metrics_schema():

@@ -5,10 +5,11 @@ Standalone execution script for quantization and pruning.
 
 import argparse
 import os
-from edgetune.config import load_base_config, load_quant_config, load_prune_config
+
+from edgetune.config import load_base_config, load_prune_config, load_quant_config
 from edgetune.model_loader import load_model_and_tokenizer
-from edgetune.quantizer import apply_quantization
 from edgetune.pruner import apply_pruning
+from edgetune.quantizer import apply_quantization
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
         base_cfg.name_or_path = args.model_path
 
     print(f"Loading model from '{base_cfg.name_or_path}'...")
-    model, tokenizer, device = load_model_and_tokenizer(base_cfg)
+    model, tokenizer, _device = load_model_and_tokenizer(base_cfg)
 
     if args.action in ["prune", "combined"]:
         p_cfg = load_prune_config(args.prune_config)

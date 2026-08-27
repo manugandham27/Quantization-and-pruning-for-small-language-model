@@ -3,10 +3,10 @@ Unit tests for Pruner module (unstructured & structured pruning).
 """
 
 import pytest
-import torch
-import torch.nn as nn
-from edgetune.schemas import PruningConfigSchema
+from torch import nn
+
 from edgetune.pruner import Pruner, calculate_model_sparsity
+from edgetune.schemas import PruningConfigSchema
 
 
 class DummyLinearNet(nn.Module):
@@ -32,7 +32,7 @@ def test_unstructured_pruning():
 
     assert meta["method"] == "unstructured_magnitude"
     assert meta["pruned_layers"] == 2
-    sparsity, zero_params, total_params = calculate_model_sparsity(net)
+    sparsity, _zero_params, _total_params = calculate_model_sparsity(net)
     assert pytest.approx(sparsity, abs=0.05) == 0.50
 
 

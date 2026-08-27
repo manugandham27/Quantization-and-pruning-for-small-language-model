@@ -2,12 +2,12 @@
 Pruning Engine supporting Unstructured Magnitude Pruning and Structured Head/Channel Pruning.
 """
 
-import os
+from typing import Any
+
 import torch
-import torch.nn as nn
-import torch.nn.utils.prune as prune
-from typing import Dict, Any, Tuple, List
-from transformers import PreTrainedModel, PreTrainedTokenizer
+from torch import nn
+from torch.nn.utils import prune
+from transformers import PreTrainedModel
 
 from edgetune.schemas import PruningConfigSchema
 
@@ -24,7 +24,7 @@ def is_linear_module(module: nn.Module) -> bool:
     return hasattr(module, "weight") and isinstance(module.weight, torch.Tensor) and module.weight.ndim == 2 and not isinstance(module, (nn.Embedding, nn.LayerNorm))
 
 
-def calculate_model_sparsity(model: nn.Module) -> Tuple[float, int, int]:
+def calculate_model_sparsity(model: nn.Module) -> tuple[float, int, int]:
     """
     Computes total non-zero vs zero weight parameters in linear layers.
     Returns (sparsity_ratio, zero_params, total_params).
@@ -53,7 +53,7 @@ class Pruner:
     def apply_unstructured_pruning(
         self,
         model: PreTrainedModel,
-    ) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    ) -> tuple[PreTrainedModel, dict[str, Any]]:
         print(f"[Pruner] Applying L1 Unstructured Magnitude Pruning (target sparsity: {self.config.sparsity * 100:.1f}%)...")
         pruned_modules = []
 
@@ -83,7 +83,7 @@ class Pruner:
     def apply_structured_pruning(
         self,
         model: PreTrainedModel,
-    ) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    ) -> tuple[PreTrainedModel, dict[str, Any]]:
         print(f"[Pruner] Applying Structured Channel/Head Pruning (target sparsity: {self.config.sparsity * 100:.1f}%)...")
         pruned_modules = []
 
@@ -111,7 +111,7 @@ class Pruner:
         }
         return model, metadata
 
-    def prune(self, model: PreTrainedModel) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    def prune(self, model: PreTrainedModel) -> tuple[PreTrainedModel, dict[str, Any]]:
         if self.config.method == "structured_head_channel":
             return self.apply_structured_pruning(model)
         else:
@@ -121,6 +121,6 @@ class Pruner:
 def apply_pruning(
     model: PreTrainedModel,
     config: PruningConfigSchema,
-) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+) -> tuple[PreTrainedModel, dict[str, Any]]:
     pruner = Pruner(config)
     return pruner.prune(model)

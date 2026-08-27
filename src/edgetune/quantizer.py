@@ -5,14 +5,14 @@ and PyTorch INT8 Dynamic Quantization.
 """
 
 from abc import ABC, abstractmethod
-import os
+from typing import Any
+
 import torch
-import torch.nn as nn
-from typing import Dict, Any, Optional, Tuple, List
+from torch import nn
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
+from edgetune.model_loader import get_torch_dtype
 from edgetune.schemas import QuantizationConfigSchema
-from edgetune.model_loader import get_torch_dtype, get_optimal_device, get_model_size_mb
 
 
 class BaseQuantizer(ABC):
@@ -25,7 +25,7 @@ class BaseQuantizer(ABC):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
-    ) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    ) -> tuple[PreTrainedModel, dict[str, Any]]:
         pass
 
 
@@ -41,7 +41,7 @@ class BitsAndBytesQuantizer(BaseQuantizer):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
-    ) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    ) -> tuple[PreTrainedModel, dict[str, Any]]:
         print(f"[Quantizer] Applying BitsAndBytes {self.config.bits}-bit quantization ({self.config.quant_type})...")
         try:
             from transformers import BitsAndBytesConfig
@@ -57,7 +57,7 @@ class BitsAndBytesQuantizer(BaseQuantizer):
                 bnb_config = BitsAndBytesConfig(load_in_8bit=True)
 
             model.config.quantization_config = bnb_config
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             print(f"[Quantizer] BNB native error: {e}. Applying simulated weight-quantization.")
 
         metadata = {
@@ -114,7 +114,6 @@ class Groupwise4BitLinear(nn.Module):
             w = float_layer.weight.data.to(torch.float32)
             if hasattr(float_layer, "nf") and w.shape[0] != out_features:
                 w = w.t()
-            num_groups = (in_features + group_size - 1) // group_size
             
             # Compute scales and zeros per group
             w_reshaped = w.view(out_features, -1, group_size)
@@ -149,7 +148,7 @@ class Groupwise4BitLinear(nn.Module):
         return q_layer
 
     def dequantize(self) -> torch.Tensor:
-        out_features, packed_in = self.qweights.shape
+        out_features, _packed_in = self.qweights.shape
         q_even = self.qweights & 0x0F
         q_odd = (self.qweights >> 4) & 0x0F
         
@@ -165,7 +164,11 @@ class Groupwise4BitLinear(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         w_dequant = self.dequantize()
-        return nn.functional.linear(x.to(w_dequant.dtype), w_dequant, self.bias)
+        if self.bias is not None:
+            bias = self.bias.to(x.device, dtype=w_dequant.dtype)
+        else:
+            bias = None
+        return nn.functional.linear(x.to(w_dequant.dtype), w_dequant.to(x.device), bias)
 
 
 class Groupwise4BitQuantizer(BaseQuantizer):
@@ -180,7 +183,7 @@ class Groupwise4BitQuantizer(BaseQuantizer):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
-    ) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    ) -> tuple[PreTrainedModel, dict[str, Any]]:
         print(f"[Quantizer] Applying 4-Bit Groupwise (GPTQ/AWQ style) Quantization (group_size={self.config.group_size})...")
         quantized_count = 0
 
@@ -213,7 +216,6 @@ class Groupwise4BitQuantizer(BaseQuantizer):
                         w = module.weight.data.to(torch.float32)
                         if hasattr(module, "nf") and w.shape[0] != out_feat:
                             w = w.t()
-                        num_groups = (in_feat + self.config.group_size - 1) // self.config.group_size
                         w_reshaped = w.view(out_feat, -1, self.config.group_size)
                         w_min = w_reshaped.min(dim=-1, keepdim=True)[0]
                         w_max = w_reshaped.max(dim=-1, keepdim=True)[0]
@@ -235,7 +237,6 @@ class Groupwise4BitQuantizer(BaseQuantizer):
 
                     setattr(parent, attr_name, q_layer)
                     quantized_count += 1
-
 
         print(f"[Quantizer] Successfully converted {quantized_count} linear layers to 4-bit groupwise representation.")
         metadata = {
@@ -260,7 +261,7 @@ class PyTorchDynamicQuantizer(BaseQuantizer):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
-    ) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+    ) -> tuple[PreTrainedModel, dict[str, Any]]:
         print("[Quantizer] Applying PyTorch INT8 Dynamic Quantization...")
         try:
             model = model.cpu()
@@ -275,7 +276,7 @@ class PyTorchDynamicQuantizer(BaseQuantizer):
                 "estimated_effective_bits": 8.0,
             }
             return quantized_model, metadata
-        except Exception as e:
+        except (RuntimeError, ValueError, AttributeError) as e:
             print(f"[Quantizer] PyTorch dynamic quantization note: {e}")
             return model, {"method": "pytorch_dynamic_fallback", "bits": 16, "estimated_effective_bits": 16.0}
 
@@ -284,7 +285,7 @@ def apply_quantization(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     config: QuantizationConfigSchema,
-) -> Tuple[PreTrainedModel, Dict[str, Any]]:
+) -> tuple[PreTrainedModel, dict[str, Any]]:
     """
     Factory function for applying selected quantization strategy.
     """

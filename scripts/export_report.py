@@ -4,23 +4,22 @@ Generates visual comparison charts (Pareto frontiers), CSV metrics summaries,
 and markdown results tables from benchmark outputs.
 """
 
-import os
 import json
-import pandas as pd
+import os
+from typing import Any
+
 import matplotlib.pyplot as plt
-from typing import List, Dict, Any
-
-from edgetune.schemas import BenchmarkMetrics
+import pandas as pd
 
 
-def load_benchmark_results(json_path: str = "results/benchmark_results.json") -> List[Dict[str, Any]]:
+def load_benchmark_results(json_path: str = "results/benchmark_results.json") -> list[dict[str, Any]]:
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"Benchmark results file not found at {json_path}")
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def generate_csv_report(results: List[Dict[str, Any]], csv_path: str = "results/benchmark_results.csv") -> pd.DataFrame:
+def generate_csv_report(results: list[dict[str, Any]], csv_path: str = "results/benchmark_results.csv") -> pd.DataFrame:
     df = pd.DataFrame(results)
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
     df.to_csv(csv_path, index=False)
@@ -28,7 +27,7 @@ def generate_csv_report(results: List[Dict[str, Any]], csv_path: str = "results/
     return df
 
 
-def generate_markdown_table(results: List[Dict[str, Any]]) -> str:
+def generate_markdown_table(results: list[dict[str, Any]]) -> str:
     lines = []
     lines.append("| Model Variant | ROUGE-L | Size (MB) | Peak Memory (MB) | TTFT (ms) | Tokens / sec | Compression Ratio |")
     lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: |")
@@ -49,7 +48,7 @@ def generate_markdown_table(results: List[Dict[str, Any]]) -> str:
     return table_md
 
 
-def generate_pareto_chart(results: List[Dict[str, Any]], output_img_path: str = "results/comparison_chart.png"):
+def generate_pareto_chart(results: list[dict[str, Any]], output_img_path: str = "results/comparison_chart.png"):
     os.makedirs(os.path.dirname(output_img_path), exist_ok=True)
     df = pd.DataFrame(results)
 

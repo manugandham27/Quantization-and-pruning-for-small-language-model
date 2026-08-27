@@ -4,24 +4,32 @@ Full Benchmark Sweep Script: Evaluates baseline FP16, LoRA, QLoRA, Pruned,
 Quantized, and Combined pipelines end-to-end and generates complete report artifacts.
 """
 
-import os
-import json
 import copy
-from typing import List, Dict, Any
-from datasets import load_dataset
-
+import json
+import os
 import sys
+from typing import Any
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from edgetune.config import load_base_config, load_lora_config, load_qlora_config, load_quant_config, load_prune_config
-from edgetune.model_loader import load_model_and_tokenizer, get_optimal_device
-from edgetune.peft_trainer import train_peft_model, prepare_samsum_dataset
-from edgetune.quantizer import apply_quantization
-from edgetune.pruner import apply_pruning
-from edgetune.benchmark import benchmark_model_variant
-from edgetune.schemas import BenchmarkMetrics
-from export_report import generate_csv_report, generate_markdown_table, generate_pareto_chart
+from export_report import (
+    generate_csv_report,
+    generate_markdown_table,
+    generate_pareto_chart,
+)
 
+from edgetune.benchmark import benchmark_model_variant
+from edgetune.config import (
+    load_base_config,
+    load_lora_config,
+    load_prune_config,
+    load_qlora_config,
+    load_quant_config,
+)
+from edgetune.model_loader import load_model_and_tokenizer
+from edgetune.peft_trainer import prepare_samsum_dataset, train_peft_model
+from edgetune.pruner import apply_pruning
+from edgetune.quantizer import apply_quantization
 
 
 def main():
@@ -42,7 +50,7 @@ def main():
 
 
 
-    benchmark_results: List[Dict[str, Any]] = []
+    benchmark_results: list[dict[str, Any]] = []
 
     # -------------------------------------------------------------------------
     # Stage 1: Baseline FP16 Model Evaluation
@@ -140,7 +148,7 @@ def main():
     print("\n[Sweep Stage 5/6] Applying Quantization (4-Bit Groupwise)...")
     quant_cfg = load_quant_config("configs/quantization_gptq.yaml")
     stage5_model, _, _ = load_model_and_tokenizer(lora_model_cfg, device_override=device)
-    quant_model, q_meta = apply_quantization(stage5_model, tokenizer, quant_cfg)
+    quant_model, _q_meta = apply_quantization(stage5_model, tokenizer, quant_cfg)
     quant_metrics = benchmark_model_variant(
         variant_name="LoRA + Quantized (4-bit)",
         model=quant_model,

@@ -15,3 +15,4 @@ results/checkpoints/
 # macOS & Environment
 .DS_Store
 .env
+.coverage

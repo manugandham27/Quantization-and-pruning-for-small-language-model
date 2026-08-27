@@ -2,11 +2,12 @@
 Streamlit Interactive Dashboard for EdgeTune Model Compression Tradeoffs.
 """
 
-import os
 import json
-import streamlit as st
-import pandas as pd
+import os
+
 import matplotlib.pyplot as plt
+import pandas as pd
+import streamlit as st
 
 st.set_page_config(
     page_title="EdgeTune - PEFT + Quantization & Pruning Pipeline",

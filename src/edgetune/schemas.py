@@ -2,7 +2,6 @@
 Pydantic schemas for EdgeTune configurations, model variants, and benchmark metrics.
 """
 
-from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -31,7 +30,7 @@ class LoRAConfigSchema(BaseModel):
     r: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
-    target_modules: List[str] = Field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "o_proj"])
+    target_modules: list[str] = Field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "o_proj"])
     bias: str = "none"
     task_type: str = "CAUSAL_LM"
 
@@ -57,14 +56,14 @@ class QuantizationConfigSchema(BaseModel):
     group_size: int = 128
     sym: bool = True
     desc_act: bool = False
-    target_modules: List[str] = Field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "o_proj"])
+    target_modules: list[str] = Field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "o_proj"])
     output_dir: str = "results/checkpoints/quantized"
 
 
 class PruningConfigSchema(BaseModel):
     method: str = "unstructured_magnitude"  # 'unstructured_magnitude', 'structured_head_channel'
     sparsity: float = 0.50
-    target_modules: List[str] = Field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "o_proj"])
+    target_modules: list[str] = Field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "o_proj"])
     make_permanent: bool = True
     output_dir: str = "results/checkpoints/pruned"
 
@@ -81,7 +80,7 @@ class BenchmarkMetrics(BaseModel):
     rouge1: float
     rouge2: float
     rougeL: float
-    perplexity: Optional[float] = None
+    perplexity: float | None = None
     compression_ratio: float  # vs FP16 baseline
     effective_sparsity: float = 0.0
     effective_bits: float = 16.0

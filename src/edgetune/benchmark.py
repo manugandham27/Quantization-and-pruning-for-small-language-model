@@ -5,16 +5,19 @@ TTFT (ms), Tokens/sec, ROUGE-1/2/L, Perplexity, and Compression Ratios.
 
 import os
 import time
+
+import evaluate
 import psutil
 import torch
-from typing import Dict, Any, List, Optional, Tuple
-from datasets import load_dataset, Dataset
+from datasets import Dataset
 from transformers import PreTrainedModel, PreTrainedTokenizer
-import evaluate
 
-from edgetune.schemas import BenchmarkMetrics, ModelConfig, DatasetConfig
-from edgetune.model_loader import get_optimal_device, get_model_size_mb, get_directory_size_mb
+from edgetune.model_loader import (
+    get_directory_size_mb,
+    get_model_size_mb,
+)
 from edgetune.pruner import calculate_model_sparsity
+from edgetune.schemas import BenchmarkMetrics
 
 
 def get_peak_memory_mb(device: torch.device) -> float:
@@ -28,9 +31,9 @@ def get_peak_memory_mb(device: torch.device) -> float:
         try:
             peak_bytes = torch.mps.current_allocated_memory()
             return round(peak_bytes / (1024 ** 2), 2)
-        except Exception:
+        except (AttributeError, RuntimeError):
             pass
-    
+
     process = psutil.Process(os.getpid())
     return round(process.memory_info().rss / (1024 ** 2), 2)
 
@@ -39,10 +42,10 @@ def measure_generation_performance(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    prompts: List[str],
+    prompts: list[str],
     max_new_tokens: int = 64,
     warmup_runs: int = 1,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Measures Time-To-First-Token (TTFT in ms) and Generation Speed (Tokens/sec).
     """
@@ -54,8 +57,8 @@ def measure_generation_performance(
         with torch.no_grad():
             model.generate(**warmup_input, max_new_tokens=8, do_sample=False)
 
-    ttft_list: List[float] = []
-    tokens_per_sec_list: List[float] = []
+    ttft_list: list[float] = []
+    tokens_per_sec_list: list[float] = []
 
     for prompt in prompts:
         inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -106,7 +109,7 @@ def evaluate_rouge(
     val_dataset: Dataset,
     max_samples: int = 50,
     max_new_tokens: int = 64,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """
     Evaluates ROUGE-1, ROUGE-2, and ROUGE-L scores on dialogue summarization validation split.
     """
@@ -128,8 +131,11 @@ def evaluate_rouge(
             output_ids = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
 
         generated_text = tokenizer.decode(output_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
-        predictions.append(generated_text.strip())
-        references.append(reference.strip())
+        predictions.append(generated_text.strip() or " ")
+        references.append(reference.strip() or " ")
+
+    if not predictions or not references:
+        return 0.0, 0.0, 0.0
 
     results = rouge.compute(predictions=predictions, references=references)
     r1 = round(float(results.get("rouge1", 0.0)) * 100, 2)
@@ -145,16 +151,16 @@ def benchmark_model_variant(
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
     val_dataset: Dataset,
-    baseline_disk_size_mb: Optional[float] = None,
-    checkpoint_dir: Optional[str] = None,
+    baseline_disk_size_mb: float | None = None,
+    checkpoint_dir: str | None = None,
     effective_bits: float = 16.0,
 ) -> BenchmarkMetrics:
     """
     Runs full benchmark sweep on a model variant and produces a structured BenchmarkMetrics object.
     """
-    print(f"\n========================================================")
+    print("\n========================================================")
     print(f"[Benchmark] Running Benchmark for Variant: '{variant_name}'")
-    print(f"========================================================")
+    print("========================================================")
 
     # 1. Disk Size & Sparsity
     in_memory_mb = get_model_size_mb(model)
@@ -165,7 +171,7 @@ def benchmark_model_variant(
     else:
         disk_size_mb = in_memory_mb
 
-    sparsity_ratio, zero_params, total_params = calculate_model_sparsity(model)
+    sparsity_ratio, _zero_params, _total_params = calculate_model_sparsity(model)
 
     # 2. Peak Memory
     peak_mem_mb = get_peak_memory_mb(device)
@@ -199,7 +205,7 @@ def benchmark_model_variant(
 
     metrics = BenchmarkMetrics(
         variant_name=variant_name,
-        base_model=model.config._name_or_path,
+        base_model=getattr(model.config, "_name_or_path", "unknown"),
         task_name="samsum_summarization",
         device=str(device.type),
         disk_size_mb=disk_size_mb,
@@ -221,6 +227,6 @@ def benchmark_model_variant(
     print(f"| Tokens / sec       | {metrics.tokens_per_sec} tok/s")
     print(f"| ROUGE-1 / 2 / L    | {metrics.rouge1} / {metrics.rouge2} / {metrics.rougeL}")
     print(f"| Compression Ratio  | {metrics.compression_ratio}x")
-    print(f"========================================================\n")
+    print("========================================================\n")
 
     return metrics
